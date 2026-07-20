@@ -1,11 +1,5 @@
-# AI Web Application Project
-## Description
-This project is an AI-powered Progressive Web Application developed for
-the AI Application Development course.
-## Team Members
-- Student ID:
-- Name:
-- Role:
+# AI Web App Week 1
+This project is created for the course AI Application Development.
 ## Technology Stack
 - Next.js
 - TypeScript
@@ -15,18 +9,8 @@ the AI Application Development course.
 - Vector Database
 - AI API / AI Model
 - Docker
-- Git / GitHub
-## Features Planned
-- Responsive web interface
-- AI command input
-- PostgreSQL data management
-- MongoDB AI logs
-- Vector search
-- RAG
-- PWA support
-- Docker deployment
-## Getting Started
-npm install
-npm run dev
-## Project Status
-Week 2: Git and GitHub setup
+## Week 1 Objective
+- Set up development tools
+- Create the first Next.js project
+- Understand the basic project structure
+- Run the development server
