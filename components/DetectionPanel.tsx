@@ -8,9 +8,9 @@ interface DetectedObject {
 }
 
 export function DetectionPanel() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [detections, setDetections] = useState<DetectedObject[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); //การอัปโหลดไฟล์
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null); // แสดงรูปหน้าเว็บ ไฟล์รูปที่เลือก
+  const [detections, setDetections] = useState<DetectedObject[]>([]); // วิเคราะห์คลาส
   const [hasAnalyzed, setHasAnalyzed] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -36,7 +36,7 @@ export function DetectionPanel() {
     setPreviewUrl(url);
 
     return () => {
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(url);//จะทำงานเมื่อมีไฟล์ภาพเท่านั้น 
     };
   }, [selectedFile]);
 
