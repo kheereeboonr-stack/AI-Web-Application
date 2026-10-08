@@ -1,41 +1,46 @@
 import { pool } from "@/lib/db";
+
 export const runtime = "nodejs";
+
 export async function GET() {
     try {
         const result = await pool.query(
-            `SELECT
- id, title, prompt_text,
- category, created_at
- FROM prompts
- ORDER BY created_at DESC, id DESC`
+            `SELECT id, title, count_value, note, created_at
+ FROM counters
+ ORDER BY created_at DESC`
         );
+
         return Response.json({
-            prompts: result.rows,
+            counters: result.rows,
         });
     } catch (error) {
         console.error(error);
         return Response.json(
-            { error: "Cannot load prompts" },
+            { error: "Cannot load records" },
             { status: 500 }
         );
     }
 }
+
 export async function POST(request: Request) {
     try {
         const body: unknown = await request.json();
+
         if (!body || typeof body !== "object") {
             return Response.json(
-                { error: "Invalid JSON object" },
+                { error: "Invalid body" },
                 { status: 400 }
             );
         }
+
         const data = body as Record<string, unknown>;
+
         if (
             typeof data.title !== "string" ||
-            typeof data.promptText !== "string" ||
+            typeof data.countValue !== "number" ||
             (
-                data.category !== undefined &&
-                typeof data.category !== "string"
+                data.note !== undefined &&
+                typeof data.note !== "string"
             )
         ) {
             return Response.json(
@@ -43,39 +48,42 @@ export async function POST(request: Request) {
                 { status: 400 }
             );
         }
+
         const title = data.title.trim();
-        const promptText = data.promptText.trim();
-        const category =
-            typeof data.category === "string"
-                ? data.category.trim()
+        const countValue = data.countValue;
+        const note =
+            typeof data.note === "string"
+                ? data.note.trim()
                 : "";
+
         if (
             !title ||
-            !promptText ||
             title.length > 200 ||
-            category.length > 100
+            note.length > 100 ||
+            !Number.isSafeInteger(countValue) ||
+            countValue < 0
         ) {
             return Response.json(
-                { error: "Check title and prompt" },
+                { error: "Check title and count" },
                 { status: 400 }
             );
         }
+
         const result = await pool.query(
-            `INSERT INTO prompts (
- title, prompt_text, category
- )
+            `INSERT INTO counters (title, count_value, note)
  VALUES ($1, $2, $3)
  RETURNING *`,
-            [title, promptText, category]
+            [title, countValue, note]
         );
+
         return Response.json(
-            { prompt: result.rows[0] },
+            { counter: result.rows[0] },
             { status: 201 }
         );
     } catch (error) {
         console.error(error);
         return Response.json(
-            { error: "Cannot save prompt" },
+            { error: "Cannot save record" },
             { status: 500 }
         );
     }

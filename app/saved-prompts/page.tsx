@@ -3,19 +3,19 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-type Prompt = {
+type CountRecord = {
   id: number;
   title: string;
-  prompt_text: string;
-  category: string | null;
+  count_value: number;
+  note: string | null;
   created_at: string;
 };
 
-export default function SavedPromptsPage() {
+export default function SavedCountsPage() {
   const [title, setTitle] = useState("");
-  const [promptText, setPromptText] = useState("");
-  const [category, setCategory] = useState("");
-  const [items, setItems] = useState<Prompt[]>([]);
+  const [countValue, setCountValue] = useState("");
+  const [note, setNote] = useState("");
+  const [items, setItems] = useState<CountRecord[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,13 +25,13 @@ export default function SavedPromptsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/prompts");
+      const response = await fetch("/api/counters");
       if (!response.ok) throw new Error("GET failed");
-      const data: { prompts: Prompt[] } = await response.json();
-      setItems(data.prompts);
+      const data: { counters: CountRecord[] } = await response.json();
+      setItems(data.counters);
       setError("");
     } catch {
-      setError("Cannot load prompts. Check PostgreSQL.");
+      setError("Cannot load count history. Check PostgreSQL.");
     } finally {
       setLoading(false);
     }
@@ -43,15 +43,21 @@ export default function SavedPromptsPage() {
 
   function clearForm() {
     setTitle("");
-    setPromptText("");
-    setCategory("");
+    setCountValue("");
+    setNote("");
     setEditingId(null);
   }
 
-  function edit(item: Prompt) {
+  // ดึงค่าปัจจุบันจากตัวนับในหน้าแรก (localStorage key "count")
+  function loadCurrentCount() {
+    const saved = localStorage.getItem("count");
+    setCountValue(saved ?? "0");
+  }
+
+  function edit(item: CountRecord) {
     setTitle(item.title);
-    setPromptText(item.prompt_text);
-    setCategory(item.category || "");
+    setCountValue(String(item.count_value));
+    setNote(item.note || "");
     setEditingId(item.id);
     setError("");
     setMessage("");
@@ -60,8 +66,13 @@ export default function SavedPromptsPage() {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!title.trim() || !promptText.trim()) {
-      setError("Title and Prompt are required.");
+    const value = Number(countValue);
+    if (!title.trim() || countValue.trim() === "") {
+      setError("Title and Count are required.");
+      return;
+    }
+    if (!Number.isInteger(value) || value < 0) {
+      setError("Count must be a whole number (0 or more).");
       return;
     }
 
@@ -72,38 +83,38 @@ export default function SavedPromptsPage() {
 
     try {
       const response = await fetch(
-        isEdit ? `/api/prompts/${editingId}` : "/api/prompts",
+        isEdit ? `/api/counters/${editingId}` : "/api/counters",
         {
           method: isEdit ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, promptText, category }),
+          body: JSON.stringify({ title, countValue: value, note }),
         }
       );
 
       if (!response.ok) throw new Error("Save failed");
       clearForm();
       await load();
-      setMessage(isEdit ? "Prompt updated." : "Prompt saved.");
+      setMessage(isEdit ? "Count updated." : "Count saved.");
     } catch {
-      setError("Cannot save prompt.");
+      setError("Cannot save count.");
     } finally {
       setSaving(false);
     }
   }
 
   async function remove(id: number) {
-    if (!window.confirm("Delete this prompt?")) return;
+    if (!window.confirm("Delete this record?")) return;
     setError("");
     setMessage("");
 
     try {
-      const response = await fetch(`/api/prompts/${id}`, { method: "DELETE" });
+      const response = await fetch(`/api/counters/${id}`, { method: "DELETE" });
       if (!response.ok) throw new Error("Delete failed");
       if (editingId === id) clearForm();
       await load();
-      setMessage("Prompt deleted.");
+      setMessage("Record deleted.");
     } catch {
-      setError("Cannot delete prompt.");
+      setError("Cannot delete record.");
     }
   }
 
@@ -113,9 +124,9 @@ export default function SavedPromptsPage() {
         <div className="sp-container sp-hero-inner">
           <div>
             <p className="sp-eyebrow">AI APPLICATION DEVELOPMENT WEEK 6</p>
-            <h1>Saved Prompts</h1>
+            <h1>Count History</h1>
             <p className="sp-intro">
-              Create, organize, and reuse prompt ideas for your AI application.
+              Save, review, and manage the counts you have recorded.
             </p>
           </div>
           <Link href="/" className="sp-back">
@@ -126,12 +137,12 @@ export default function SavedPromptsPage() {
 
       <div className="sp-container sp-layout">
         <section className="sp-panel sp-editor" aria-labelledby="form-title">
-          <p className="sp-kicker">01 / PROMPT EDITOR</p>
+          <p className="sp-kicker">01 / COUNT EDITOR</p>
           <h2 id="form-title">
-            {editingId === null ? "Create a prompt" : "Edit prompt"}
+            {editingId === null ? "Save a count" : "Edit record"}
           </h2>
           <p className="sp-helper">
-            Give your prompt a clear title so you can find it later.
+            Give each record a clear title so you can find it later.
           </p>
 
           <form className="sp-form" onSubmit={save}>
@@ -143,30 +154,40 @@ export default function SavedPromptsPage() {
               value={title}
               maxLength={200}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Example: Explain AI simply"
+              placeholder="Example: Visitors at the entrance"
               required
             />
 
-            <label htmlFor="prompt">
-              Prompt <span aria-hidden="true">*</span>
-            </label>
-            <textarea
-              id="prompt"
-              value={promptText}
-              onChange={(e) => setPromptText(e.target.value)}
-              placeholder="Write the instruction you want to reuse..."
-              required
-            />
-
-            <label htmlFor="category">
-              Category <span className="sp-optional">Optional</span>
+            <label htmlFor="count">
+              Count <span aria-hidden="true">*</span>
             </label>
             <input
-              id="category"
-              value={category}
+              id="count"
+              type="number"
+              min={0}
+              step={1}
+              value={countValue}
+              onChange={(e) => setCountValue(e.target.value)}
+              placeholder="Example: 25"
+              required
+            />
+            <button
+              type="button"
+              className="sp-secondary"
+              onClick={loadCurrentCount}
+            >
+              Use current counter value
+            </button>
+
+            <label htmlFor="note">
+              Note <span className="sp-optional">Optional</span>
+            </label>
+            <input
+              id="note"
+              value={note}
               maxLength={100}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="Example: Education"
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Example: Morning round"
             />
 
             <div className="sp-actions">
@@ -174,8 +195,8 @@ export default function SavedPromptsPage() {
                 {saving
                   ? "Saving..."
                   : editingId === null
-                  ? "Save prompt"
-                  : "Update prompt"}
+                  ? "Save count"
+                  : "Update record"}
               </button>
               {editingId !== null && (
                 <button
@@ -204,22 +225,22 @@ export default function SavedPromptsPage() {
         <section className="sp-library" aria-labelledby="library-title">
           <div className="sp-library-head">
             <div>
-              <p className="sp-kicker">02 / YOUR COLLECTION</p>
-              <h2 id="library-title">My saved prompts</h2>
+              <p className="sp-kicker">02 / YOUR HISTORY</p>
+              <h2 id="library-title">My count history</h2>
             </div>
             <span className="sp-count">{items.length} saved</span>
           </div>
 
           {loading && (
             <p className="sp-empty" role="status">
-              Loading prompts...
+              Loading history...
             </p>
           )}
 
           {!loading && items.length === 0 && (
             <div className="sp-empty">
-              <strong>No saved prompts yet</strong>
-              <p>Your first prompt will appear here after you save it.</p>
+              <strong>No records yet</strong>
+              <p>Your first count will appear here after you save it.</p>
             </div>
           )}
 
@@ -229,9 +250,14 @@ export default function SavedPromptsPage() {
                 <article className="sp-item" key={item.id}>
                   <div className="sp-item-top">
                     <h3>{item.title}</h3>
-                    <span className="sp-tag">{item.category || "General"}</span>
+                    <span className="sp-tag">{item.note || "General"}</span>
                   </div>
-                  <p className="sp-prompt-text">{item.prompt_text}</p>
+                  <p className="sp-prompt-text">
+                    <strong>{item.count_value}</strong>
+                  </p>
+                  <p className="sp-helper">
+                    {new Date(item.created_at).toLocaleString("th-TH")}
+                  </p>
                   <div className="sp-item-actions">
                     <button type="button" onClick={() => edit(item)}>
                       Edit
